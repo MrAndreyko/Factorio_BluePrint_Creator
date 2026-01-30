@@ -5,7 +5,7 @@ import base64
 import dataclasses
 import json
 import zlib
-from typing import Dict, List
+from typing import Dict, Iterable, List, Tuple
 
 
 BELT_THROUGHPUT_ITEMS_PER_SEC = {
@@ -61,24 +61,120 @@ def direction_to_int(direction: str) -> int:
     return mapping[direction]
 
 
+def rotate_point(x: float, y: float, rotation_steps: int) -> Tuple[float, float]:
+    rotation_steps %= 4
+    if rotation_steps == 0:
+        return x, y
+    if rotation_steps == 1:
+        return y, -x
+    if rotation_steps == 2:
+        return -x, -y
+    return -y, x
+
+
+def rotate_direction(direction: int, rotation_steps: int) -> int:
+    return (direction + rotation_steps * 2) % 8
+
+
+def iter_furnace_positions(count: int) -> Iterable[Tuple[float, float]]:
+    for index in range(count):
+        yield float(index * 2), 0.0
+
+
 def build_furnace_entities(count: int, direction: int, furnace: str) -> List[Dict[str, object]]:
     entities: List[Dict[str, object]] = []
-    for index in range(count):
+    for x, y in iter_furnace_positions(count):
         entities.append(
             {
-                "entity_number": index + 1,
                 "name": furnace,
-                "position": {"x": float(index * 2), "y": 0.0},
+                "position": {"x": x, "y": y},
                 "direction": direction,
             }
         )
     return entities
 
 
+def build_belt_entities(count: int, belt: str, y_offset: float, direction: int) -> List[Dict[str, object]]:
+    entities: List[Dict[str, object]] = []
+    for index in range(count):
+        entities.append(
+            {
+                "name": belt,
+                "position": {"x": float(index * 2), "y": y_offset},
+                "direction": direction,
+            }
+        )
+    return entities
+
+
+def build_inserter_entities(
+    count: int, inserter_direction: int, y_offset: float
+) -> List[Dict[str, object]]:
+    entities: List[Dict[str, object]] = []
+    for index in range(count):
+        entities.append(
+            {
+                "name": "inserter",
+                "position": {"x": float(index * 2), "y": y_offset},
+                "direction": inserter_direction,
+            }
+        )
+    return entities
+
+
+def rotation_steps_for_input(input_side: str) -> int:
+    order = ["north", "east", "south", "west"]
+    return order.index(input_side)
+
+
+def validate_sides(input_side: str, output_side: str) -> None:
+    opposites = {"north": "south", "south": "north", "east": "west", "west": "east"}
+    if opposites[input_side] != output_side:
+        raise ValueError("Output side must be opposite the input side for the furnace line layout.")
+
+
+def apply_rotation(
+    entities: List[Dict[str, object]], rotation_steps: int
+) -> List[Dict[str, object]]:
+    rotated: List[Dict[str, object]] = []
+    for entity in entities:
+        x = float(entity["position"]["x"])
+        y = float(entity["position"]["y"])
+        new_x, new_y = rotate_point(x, y, rotation_steps)
+        rotated_entity = dict(entity)
+        rotated_entity["position"] = {"x": new_x, "y": new_y}
+        if "direction" in rotated_entity:
+            rotated_entity["direction"] = rotate_direction(int(rotated_entity["direction"]), rotation_steps)
+        rotated.append(rotated_entity)
+    return rotated
+
+
+def attach_entity_numbers(entities: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    for index, entity in enumerate(entities, start=1):
+        entity["entity_number"] = index
+    return entities
+
+
 def generate_furnace_blueprint(config: FurnaceLineConfig) -> Dict[str, object]:
     count = calculate_furnace_count(config)
-    direction = direction_to_int("north")
-    entities = build_furnace_entities(count, direction, config.furnace)
+    validate_sides(config.input_side, config.output_side)
+    rotation_steps = rotation_steps_for_input(config.input_side)
+
+    furnace_direction = direction_to_int("north")
+    belt_direction = direction_to_int("east")
+    input_inserter_direction = direction_to_int("south")
+    output_inserter_direction = direction_to_int("north")
+
+    entities = [
+        *build_furnace_entities(count, furnace_direction, config.furnace),
+        *build_belt_entities(count, config.belt, y_offset=-2.0, direction=belt_direction),
+        *build_belt_entities(count, config.belt, y_offset=2.0, direction=belt_direction),
+        *build_inserter_entities(count, input_inserter_direction, y_offset=-1.0),
+        *build_inserter_entities(count, output_inserter_direction, y_offset=1.0),
+    ]
+
+    entities = apply_rotation(entities, rotation_steps)
+    entities = attach_entity_numbers(entities)
 
     return {
         "blueprint": {
@@ -134,7 +230,11 @@ def main() -> None:
         blueprint_label=args.label,
     )
 
-    blueprint = generate_furnace_blueprint(config)
+    try:
+        blueprint = generate_furnace_blueprint(config)
+    except ValueError as exc:
+        parser.error(str(exc))
+        return
     if args.json:
         print(json.dumps(blueprint, indent=2))
         return

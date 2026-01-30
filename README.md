@@ -9,13 +9,20 @@ This repository contains the beginnings of an external blueprint generator app. 
 
 ## Current capabilities
 - Calculates the number of furnaces needed to saturate a selected belt.
-- Allows choosing furnace type, belt type, and basic metadata for input/output sides.
+- Places furnaces, belts, and inserters for a simple line layout.
+- Allows choosing furnace type, belt type, and input/output sides (must be opposite).
 - Outputs a blueprint string or raw JSON.
 
 ## Usage
 
 ```bash
 python3 src/blueprint_generator.py --furnace stone-furnace --belt transport-belt
+```
+
+Example with explicit sides:
+
+```bash
+python3 src/blueprint_generator.py --input-side east --output-side west --json
 ```
 
 Output raw JSON for inspection:
@@ -25,7 +32,7 @@ python3 src/blueprint_generator.py --json
 ```
 
 ## Next steps (planned)
-- Add inserters and belts based on input/output direction.
+- Add splitters/mergers and belt balancers for multi-lane inputs.
 - Add layout previews (grid visualization).
 - Add crafting-chain ratio calculations (e.g., green circuits).
 - Build a web UI around the generator.
