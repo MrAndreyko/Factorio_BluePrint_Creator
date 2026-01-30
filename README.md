@@ -11,6 +11,7 @@ This repository contains the beginnings of an external blueprint generator app. 
 - Calculates the number of furnaces needed to saturate a selected belt.
 - Places furnaces, belts, and inserters for a simple line layout.
 - Allows choosing furnace type, belt type, and input/output sides (must be opposite).
+- Adds a coal side-loading stub that merges onto the input belt.
 - Outputs a blueprint string or raw JSON.
 
 ## Usage

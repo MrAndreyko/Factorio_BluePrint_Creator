@@ -81,6 +81,11 @@ def iter_furnace_positions(count: int) -> Iterable[Tuple[float, float]]:
         yield float(index * 2), 0.0
 
 
+def iter_belt_positions(count: int) -> Iterable[Tuple[float, float]]:
+    for index in range(count * 2):
+        yield float(index), 0.0
+
+
 def build_furnace_entities(count: int, direction: int, furnace: str) -> List[Dict[str, object]]:
     entities: List[Dict[str, object]] = []
     for x, y in iter_furnace_positions(count):
@@ -96,11 +101,11 @@ def build_furnace_entities(count: int, direction: int, furnace: str) -> List[Dic
 
 def build_belt_entities(count: int, belt: str, y_offset: float, direction: int) -> List[Dict[str, object]]:
     entities: List[Dict[str, object]] = []
-    for index in range(count):
+    for x, _ in iter_belt_positions(count):
         entities.append(
             {
                 "name": belt,
-                "position": {"x": float(index * 2), "y": y_offset},
+                "position": {"x": x, "y": y_offset},
                 "direction": direction,
             }
         )
@@ -120,6 +125,14 @@ def build_inserter_entities(
             }
         )
     return entities
+
+
+def build_coal_merge_entities(belt: str) -> List[Dict[str, object]]:
+    return [
+        {"name": belt, "position": {"x": -1.0, "y": -5.0}, "direction": direction_to_int("north")},
+        {"name": belt, "position": {"x": -1.0, "y": -4.0}, "direction": direction_to_int("north")},
+        {"name": belt, "position": {"x": -1.0, "y": -3.0}, "direction": direction_to_int("east")},
+    ]
 
 
 def rotation_steps_for_input(input_side: str) -> int:
@@ -163,14 +176,15 @@ def generate_furnace_blueprint(config: FurnaceLineConfig) -> Dict[str, object]:
     furnace_direction = direction_to_int("north")
     belt_direction = direction_to_int("east")
     input_inserter_direction = direction_to_int("south")
-    output_inserter_direction = direction_to_int("north")
+    output_inserter_direction = direction_to_int("south")
 
     entities = [
         *build_furnace_entities(count, furnace_direction, config.furnace),
-        *build_belt_entities(count, config.belt, y_offset=-2.0, direction=belt_direction),
-        *build_belt_entities(count, config.belt, y_offset=2.0, direction=belt_direction),
-        *build_inserter_entities(count, input_inserter_direction, y_offset=-1.0),
-        *build_inserter_entities(count, output_inserter_direction, y_offset=1.0),
+        *build_belt_entities(count, config.belt, y_offset=-3.0, direction=belt_direction),
+        *build_belt_entities(count, config.belt, y_offset=3.0, direction=belt_direction),
+        *build_inserter_entities(count, input_inserter_direction, y_offset=-2.0),
+        *build_inserter_entities(count, output_inserter_direction, y_offset=2.0),
+        *build_coal_merge_entities(config.belt),
     ]
 
     entities = apply_rotation(entities, rotation_steps)
