@@ -175,8 +175,8 @@ def generate_furnace_blueprint(config: FurnaceLineConfig) -> Dict[str, object]:
 
     furnace_direction = direction_to_int("north")
     belt_direction = direction_to_int("east")
-    input_inserter_direction = direction_to_int("south")
-    output_inserter_direction = direction_to_int("south")
+    input_inserter_direction = direction_to_int("north")
+    output_inserter_direction = direction_to_int("north")
 
     entities = [
         *build_furnace_entities(count, furnace_direction, config.furnace),
